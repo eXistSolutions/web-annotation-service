@@ -18,7 +18,7 @@ declare variable $local:routes := [
     'handler': "annotation-list"
   },
   map {
-    'pattern': '.*',
+    'pattern': '/',
     'methods': 'GET',
     'handler': 'index'
   }
@@ -27,22 +27,23 @@ declare variable $local:routes := [
 declare function local:request-matches-route($request, $route) {
     let $matches := (
         $request?method = $route?methods and
-        matches($request?url, $route?pattern)
+        matches($request?url, '^' || $route?pattern || '$')
     )
 
     return (
-        util:log('info', string-join(
-            ($request?url, $request?method, $route?methods, $route?pattern, $matches), '--')),
+        util:log('info', 'ROUTE: ' || $route?pattern || string-join($route?methods, ',')),
+        util:log('info', 'MATCHES: ' || $matches),
         $matches
     )
 };
 
 declare function local:route($request, $routes as array(*)) {
     let $rules := array:filter($routes, local:request-matches-route($request, ?))
-    let $number-of-matching-rules := count($rules)
-    let $d := util:log('info', $rules?1?handler)
+    let $number-of-matching-rules := array:size($rules)
 
     return (
+        util:log('info', $number-of-matching-rules),
+        util:log('info', string-join(('REQUEST:', $request?url, $request?method, $request?headers?Accept), ' - ')),
         if ($number-of-matching-rules >= 1)
         then (
             <dispatch xmlns="http://exist.sourceforge.net/NS/exist">
@@ -57,12 +58,16 @@ declare function local:route($request, $routes as array(*)) {
     )
 };
 
-local:route(
+let $request :=
     map {
         'url': $exist:path,
         'method': request:get-method(),
         'headers': map {
             'Accept': request:get-header('Accept')
         }
-    },
-    $local:routes)
+    }
+
+return (
+    util:log('info', $exist:path),
+    local:route($request, $local:routes)
+) 

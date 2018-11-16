@@ -12,7 +12,7 @@ const exClient = exist.createClient({
     host: 'localhost',
     port: '8080',
     path: '/exist/xmlrpc',
-    basic_auth: {user: 'admin', pass: ''}
+    basic_auth: {user: 'wap', pass: ''}
 })
 
 const targetConfiguration = { target: '/db/apps/wap/' }

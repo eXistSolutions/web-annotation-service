@@ -1,7 +1,7 @@
 <annotation id="http://annotations/anno1" created="2018-10-10T12:00:00Z">
     <body>
         <entry type="TextualBody">Some Text</entry>
-    <body>
+    </body>
     <target>
         <entry id="s-15392581128382" type="SvgSelector">
             <circle id="s-15392581128382" cx="0" cy="0" r="126.953125" transform="translate(577.64 666.02) scale(1.16 1.21)" />
