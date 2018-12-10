@@ -1,4 +1,4 @@
-<annotation id="http://annotations/anno1" created="2018-10-10T12:00:00Z">
+<annotation xml:id="a1" created="2018-10-10T12:00:00Z">
     <body>
         <entry type="TextualBody">Some Text</entry>
     </body>

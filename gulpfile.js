@@ -1,12 +1,8 @@
 'use strict';
 
 const gulp = require('gulp'),
-    exist = require('gulp-exist'),
+    exist = require('@existdb/gulp-exist'),
     del = require('del')
-
-exist.defineMimeTypes({
-    'application/xml': ['odd']
-})
 
 const exClient = exist.createClient({
     host: 'localhost',

@@ -1,0 +1,40 @@
+{
+  "@context": [
+    "http://www.w3.org/ns/anno.jsonld",
+    "http://www.w3.org/ns/ldp.jsonld"
+  ],
+  "id": "http://example.org/annotations/?iris=0",
+  "type": ["BasicContainer", "AnnotationCollection"],
+  "total": 42023,
+  "modified": "2016-07-20T12:00:00Z",
+  "label": "A Container for Web Annotations",
+  "first": {
+    "id": "http://example.org/annotations/?iris=0&page=0",
+    "type": "AnnotationPage",
+    "next": "http://example.org/annotations/?iris=0&page=1",
+    "items": [
+      {
+        "id": "http://example.org/annotations/anno1",
+        "type": "Annotation",
+        "body": "http://example.net/body1",
+        "target": "http://example.com/page1"
+      },
+      {
+        "id": "http://example.org/annotations/anno2",
+        "type": "Annotation",
+        "body": {
+          "type": "TextualBody",
+          "value": "I like this!"
+        },
+        "target": "http://example.com/book1"
+      },
+      {
+        "id": "http://example.org/annotations/anno50",
+        "type": "Annotation",
+        "body" : "http://example.org/texts/description1",
+        "target": "http://example.com/images/image1"
+      }
+    ]
+  },
+  "last": "http://example.org/annotations/?iris=0&page=840"
+}

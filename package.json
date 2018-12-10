@@ -1,0 +1,24 @@
+{
+  "name": "web-annotation-protocol",
+  "version": "1.0.0",
+  "description": "aims to be an implementation of [Web Annotation Protocol](http://w3c.github.io/web-annotation/protocol/wd/) running as a service app on eXist-db.",
+  "main": "gulpfile.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "dependencies": {
+    "@existdb/gulp-exist": "^3.0.0",
+    "del": "^3.0.0",
+    "gulp": "^3.9.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.existsolutions.com:foss/web-annotation-protocol.git"
+  },
+  "author": "",
+  "license": "ISC"
+}
