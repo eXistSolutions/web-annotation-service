@@ -29,9 +29,11 @@ declare variable $config:app-root :=
 
 declare variable $config:repo-descriptor := doc(concat($config:app-root, "/repo.xml"))/repo:meta;
 declare variable $config:expath-descriptor := doc(concat($config:app-root, "/expath-pkg.xml"))/expath:package;
+
 declare variable $config:SETTINGS := doc($config:app-root || "/configuration.xml")/settings;
 
-declare variable $config:annotation-collection := doc($config:app-root || "/configuration.xml")/settings/annotations/@collection/string();
+declare variable $config:annotation-collection := $config:SETTINGS/annotations/@collection/string();
+declare variable $config:annotation-id-prefix := $config:SETTINGS/annotations/@id-prefix/string();
 
 (:
 declare variable $config:AUTH := doc($config:app-root || "/configuration.xml")/settings/authorization;

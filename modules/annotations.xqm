@@ -8,35 +8,30 @@ import module namespace errors="wap/errors" at 'errors.xqm';
 declare variable $annotations:items-per-page := 10;
 
 declare function annotations:list ($document-id, $page) {
-    let $annotations := for-each(
-        collection($config:annotation-collection)/annotation,
-        annotations:entry2json(?)
-    )
+    let $annotations := collection($config:annotation-collection)/annotation
     let $annotations-count := count($annotations)
     let $start-index := $page * $annotations:items-per-page
     let $last-page := ceiling($annotations-count div $annotations:items-per-page)
     let $next-page := if ($page + 1 >= $last-page) then ($last-page) else ($page + 1)
 
     return map {
-        "collection": $config:annotation-collection,
-        "@context": [
-            "http://www.w3.org/ns/anno.jsonld",
-            "http://www.w3.org/ns/ldp.jsonld"
-        ],
-        "id": "http://example.org/annotations/?iris=0",
-        "type": ["BasicContainer", "AnnotationCollection"],
-        "total": $annotations-count,
-        "modified": "2016-07-20T12:00:00Z", (: TODO :)
-        "label": "A Container for Web Annotations",
-        "first": map {
-            "id": "?page=" || $page,
-            "type": "AnnotationPage",
-            "next": "?page=" || $next-page,
-            "items": array { 
-                subsequence($annotations, $start-index, $annotations:items-per-page)
-            } 
+        "@context": "http://www.w3.org/ns/anno.jsonld",
+        "type": "AnnotationPage",
+        "partOf": map {
+            "id": $config:annotation-id-prefix,
+            "total": $annotations-count,
+            "modified": xs:string(current-dateTime())
         },
-        "last": "?page=" || $last-page
+        "startIndex": 0,
+        "id": $config:annotation-id-prefix || "?page=" || $page,
+        "items": array { 
+            for-each(
+                subsequence($annotations, $start-index, $annotations:items-per-page),
+                annotations:entry2json(?)
+            )
+        },
+        "next": $config:annotation-id-prefix || "?page=" || $next-page,
+        "last": $config:annotation-id-prefix || "?page=" || $last-page
     }
 };
 
@@ -57,37 +52,57 @@ declare function annotations:entry2json ($entry as element(annotation)) as map()
         "id": $entry/@xml:id/string(),
         "type": "Annotation",
         "created": $entry/@created/string(),
-        "body": map {
-            "type": $entry/body/entry/@type/string(),
-            "value": $entry/body/entry/text()
+        "body": array {
+            for-each($entry/body, function ($body) {
+                map {
+                    "type": $body/@type/string(),
+                    "value": map {
+                        "name": $body/category/@name/string(),
+                        "label": $body/category/@label/string(),
+                        "color": $body/category/@color/string()
+                    }
+                }
+            })
         },
         "target": array {
-            for-each($entry/target/entry, function ($target) {
+            for-each($entry/target, function ($target) {
                 map {
-                    "id": $target/@id/string(),
-                    "type": $target/@type/string(),
-                    "value": 
-                        serialize($target/*, map{'method': 'adaptive'})
+                    "selector": map {
+                        "type": $target/selector/@type/string(),
+                        "value": serialize($target/selector/*, map{'method': 'adaptive'})
+                    },
+                    "id": $target/@xml:id/string(),
+                    "type": $target/@xml:id/string(),
+                    "source": $target/@source/string()
                 }
             })
         }
     }
 };
 
+declare function annotations:body2xml($body) {
+    <body type="{$body?type}">
+        {
+            switch ($body?type)
+            case 'CategoryLabel' return
+                <category name="{$body?value?name}" color="{$body?value?color}" label="{$body?value?label}"/>
+            default return serialize($body?value)
+        }
+    </body>
+};
+
 declare function annotations:json2entry ($data) {
     <annotation xml:id="{$data?id}" created="{$data?created}">
-        <body>
-            <entry type="{$data?body?type}">{$data?body?value}</entry>
-        </body>
-        <target>
-            {
-                array:for-each($data?target, function ($target) {
-                    <entry id="{$target?id}" type="{$target?type}">
-                        {parse-xml($target?value)}
-                    </entry>
-                })
-            }
-        </target>
+        {
+            array:for-each($data?body, annotations:body2xml#1),
+            array:for-each($data?target, function ($target) {
+                <target xml:id="{$target?id}" type="{$target?type}" source="{$target?source}">
+                    <selector type="{$target?selector?type}">
+                        {parse-xml($target?selector?value)}
+                    </selector>
+                </target>
+            })
+        }
     </annotation>
 };
 
@@ -103,6 +118,7 @@ declare function annotations:add ($data) {
 };
 
 declare function annotations:batch-add ($container-data) {
+    util:log('info', 'annotation:batch-add FIRST:' || serialize($container-data?1, map {'method': 'adaptive'})),
     array:for-each($container-data?items, function ($item) {
         try {
             annotations:add($item)
@@ -119,14 +135,16 @@ declare function annotations:handle-single($request) {
 };
 
 declare function annotations:handle-add($request) {
-    let $data := parse-json(xs:string($request?body))
+    let $data := parse-json(util:binary-to-string($request?body))
 
-    return
+    return (
+        util:log('info', 'annotation:handle-add DATA:' || serialize($data, map {'method': 'adaptive'})),
         if ($data?type eq 'Annotation')
         then (annotations:add($data))
         else if ($data?type eq 'BasicContainer')
         then (annotations:batch-add($data))
         else (error($errors:E400, 'Unknown item type', $data?type))
+    )
 };
 
 declare function annotations:handle-list($request) {

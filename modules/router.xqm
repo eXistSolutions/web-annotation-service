@@ -73,7 +73,7 @@ declare function router:route($request, $routes as array(*)) {
             catch * {
                 response:set-status-code(500),
                 serialize(
-                    map { 'error': 500, 'description': $err:description },
+                    map { 'error': 500, 'description': $err:description, 'sent': $request?body },
                     map { "method": "json" }
                 )
             }
