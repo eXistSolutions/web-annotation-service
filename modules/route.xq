@@ -2,6 +2,7 @@ xquery version "3.1";
 
 import module namespace login="http://exist-db.org/xquery/login" at "resource:org/exist/xquery/modules/persistentlogin/login.xql";
 import module namespace router="wap/router" at 'router.xqm';
+import module namespace rq="wap/request" at 'request.xqm';
 import module namespace annotations="wap/annotations" at 'annotations.xqm';
 
 declare variable $local:routes := [
@@ -13,16 +14,22 @@ declare variable $local:routes := [
   map {
     'pattern': '/annotations/',
     'methods': ('GET', 'HEAD', 'OPTIONS'),
+    'parameters': [
+      map { 'name':'page', 'type': 'xs:integer', 'default': 0 },
+      'document'
+    ],
     'handler': annotations:handle-list#1
   },
   map {
     'pattern': '/annotations/',
-    'methods': ('POST'),
-    'handler': annotations:handle-add#1
+    'methods': 'POST',
+    'parameters': ['batch'],
+    'handler': annotations:handle-update#1
   },
   map {
     'pattern': '/',
     'methods': 'GET',
+    'parameters': ['test'],
     'handler': function ($request) {
         map {
             'request': $request
@@ -31,4 +38,4 @@ declare variable $local:routes := [
   }
 ];
 
-router:route(router:request-map(), $local:routes)
+router:route(rq:map('/exist/apps/wap'), $local:routes)
