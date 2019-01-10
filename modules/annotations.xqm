@@ -9,11 +9,19 @@ declare variable $annotations:items-per-page := 10;
 
 declare
 function annotations:list ($document-id as xs:string?, $page as xs:integer?) as map(*) {
-    let $annotations := collection($config:annotation-collection)/annotation
+    let $all_annotations := collection($config:annotation-collection)/annotation
+    let $annotations := 
+        if (exists($document-id))
+        then (filter($all_annotations, function ($anno) {
+            $document-id = $anno/target/@source/string()
+        }))
+        else ($all_annotations)
     let $annotations-count := count($annotations)
-    let $last-page := ceiling($annotations-count div $annotations:items-per-page)-1
+    let $last-page := max((ceiling($annotations-count div $annotations:items-per-page)-1, 0))
 
-    return
+    return (
+        util:log('info', ('asdf', $all_annotations/target/@source/string())),
+        util:log('info', ('document ID:', $document-id, ' Page:',$page,' Last page:', $last-page)),
         if ($page > $last-page or $page < 0)
         then (error($errors:E400, 'requested page is out of bounds'))
         else (
@@ -39,6 +47,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
                 "last": $config:annotation-id-prefix || "?page=" || $last-page
             }
         )
+    )
 };
 
 (:~
@@ -240,5 +249,6 @@ declare function annotations:handle-update($request as map(*)) as map(*) {
 };
 
 declare function annotations:handle-list($request as map(*)) as map(*) {
+    (:~ annotations:list('http://kjc-sv010.kjc.uni-heidelberg.de:8080/fcgi-bin/iipsrv.fcgi?IIIF=imageStorage/ecpo_new/jingbao/1919/05/jb_0027_1919-05-21_0001%252B0004.tif/full/!4096,4096/0/default.jpg', $request?parameters?page) ~:)
     annotations:list($request?parameters?document, $request?parameters?page)
 };
