@@ -3,6 +3,8 @@ xquery version "3.1";
 module namespace annotations="wap/annotations";
 
 import module namespace config="http://exist-db.org/xquery/apps/config" at 'config.xqm';
+import module namespace rp='wap/request-parameters' at 'request-parameters.xqm';
+
 import module namespace errors="wap/errors" at 'errors.xqm';
 
 declare variable $annotations:items-per-page := 10;
@@ -16,11 +18,11 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
             $document-id = $anno/target/@source/string()
         }))
         else ($all_annotations)
+    let $url :=  $config:annotation-id-prefix || '/annotations/'
     let $annotations-count := count($annotations)
     let $last-page := max((ceiling($annotations-count div $annotations:items-per-page)-1, 0))
 
     return (
-        util:log('info', ('asdf', $all_annotations/target/@source/string())),
         util:log('info', ('document ID:', $document-id, ' Page:',$page,' Last page:', $last-page)),
         if ($page > $last-page or $page < 0)
         then (error($errors:E400, 'requested page is out of bounds'))
@@ -36,15 +38,24 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
                     "modified": xs:string(current-dateTime())
                 },
                 "startIndex": $start-index,
-                "id": $config:annotation-id-prefix || "?page=" || $page,
+                "id": $url || rp:serialize(map {
+                    'document': $document-id,
+                    'page': $page
+                }),
                 "items": array { 
                     for-each(
                         subsequence($annotations, $start-index, $annotations:items-per-page),
                         annotations:entry2json(?)
                     )
                 },
-                "next": $config:annotation-id-prefix || "?page=" || $next-page,
-                "last": $config:annotation-id-prefix || "?page=" || $last-page
+                "next": $url || rp:serialize(map {
+                    'document': $document-id,
+                    'page': $next-page
+                }),
+                "last": $url || rp:serialize(map {
+                    'document': $document-id,
+                    'page': $last-page
+                })
             }
         )
     )
