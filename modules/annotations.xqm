@@ -9,16 +9,22 @@ import module namespace errors="wap/errors" at 'errors.xqm';
 
 declare variable $annotations:items-per-page := 10;
 
+declare %private
+function annotations:filter-by-source ($document-id as xs:string, $anno as element(annotation)) as xs:boolean {
+    $document-id = $anno/target/@source/string()
+};
+
+declare %private
+function annotations:by-source ($document-id as xs:string) as element(annotation)* {
+    collection($config:annotation-collection)/annotation[$document-id eq ./target/@source/string()]
+};
+
 declare
 function annotations:list ($document-id as xs:string?, $page as xs:integer?) as map(*) {
-    let $all_annotations := collection($config:annotation-collection)/annotation
     let $annotations := 
         if (exists($document-id))
-        then (filter($all_annotations, function ($anno) {
-            $document-id = $anno/target/@source/string()
-        }))
-        else ($all_annotations)
-    let $url :=  $config:annotation-id-prefix || '/annotations/'
+        then (annotations:by-source($document-id))
+        else (collection($config:annotation-collection)/annotation)
     let $annotations-count := count($annotations)
     let $last-page := max((ceiling($annotations-count div $annotations:items-per-page)-1, 0))
 
@@ -38,7 +44,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
                     "modified": xs:string(current-dateTime())
                 },
                 "startIndex": $start-index,
-                "id": $url || rp:serialize(map {
+                "id": $config:annotation-id-prefix || rp:serialize(map {
                     'document': $document-id,
                     'page': $page
                 }),
@@ -48,11 +54,11 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
                         annotations:entry2json(?)
                     )
                 },
-                "next": $url || rp:serialize(map {
+                "next": $config:annotation-id-prefix|| rp:serialize(map {
                     'document': $document-id,
                     'page': $next-page
                 }),
-                "last": $url || rp:serialize(map {
+                "last": $config:annotation-id-prefix || rp:serialize(map {
                     'document': $document-id,
                     'page': $last-page
                 })
@@ -181,12 +187,22 @@ declare function annotations:update ($data as map(*)) as xs:string {
     let $annotation := annotations:json2entry($data)
     let $file := $data?id || '.xml'
     let $stored := xmldb:store($config:annotation-collection, $file, $annotation)
-    return $config:annotation-id-prefix || $data?id
+    return $data?id
 };
 
 declare function annotations:update-container-item ($item as map(*)) as map(*) {
     util:log('info', 'annotations:update-container-item ' || serialize($item, map { 'method': 'adaptive' })),
     try {
+        let $id := 
+            if (starts-with($item?id, $config:annotation-id-prefix))
+            then ($item?id)
+            else (concat($config:annotation-id-prefix, $item?id))
+        
+        let $item-with-prefixed-id := map:merge(($item, map { 'id': $id }))
+        let $migrate :=
+            if (annotations:exists($item?id) and not(annotations:exists($id)))
+            then (annotations:delete($item?id))
+            else ()
         let $result :=
             if (annotations:exists($item?id))
             then (annotations:update($item))
@@ -205,6 +221,47 @@ declare function annotations:update-container-item ($item as map(*)) as map(*) {
     }
 };
 
+declare function annotations:file-by-id ($id as xs:string?) {
+    let $annotation := collection($config:annotation-collection)/id($id)
+
+    return
+        if (not(exists($annotation)))
+        then ()
+        else ($config:annotation-collection || util:document-name($annotation))
+};
+
+(:~ 
+ ~:)
+declare function annotations:delete ($id as xs:string) {
+    if (not(annotations:exists($id)))
+    then (true())
+    else (
+        xmldb:remove(
+            $config:annotation-collection,
+            util:document-name(collection($config:annotation-collection)/id($id))
+        )
+    )
+};
+
+(:~
+    
+~:)
+declare function annotations:delete-elements-by-document($container-document as xs:string, $container-items as array(*)) {
+    let $submitted-annotation-ids := array:for-each($container-items, function ($item) {$item?id})
+    let $annotation-ids-to-delete := annotations:by-source($container-document)[not(./@xml:id/string() = $submitted-annotation-ids?*)]/@xml:id/string()
+
+    return (
+        util:log('info', 'sub: ' || serialize($submitted-annotation-ids, map {'method': 'adaptive'})),
+        util:log('info', 'del: ' || serialize($annotation-ids-to-delete, map {'method': 'adaptive'})),
+        for-each($annotation-ids-to-delete, function ($id) {
+            if (annotations:delete($id))
+            then (``[deleted `{$id}`]``)
+            else (``[could not delete `{$id}`]``)
+        })
+    )
+};
+
+
 (:~
     update and create multiple annotations in a BasicContainer
 
@@ -213,15 +270,20 @@ declare function annotations:update-container-item ($item as map(*)) as map(*) {
     @returns array() An array of strings, where each entry represents the result of a single operation
 ~:)
 declare function annotations:batch-update ($container as map(*)) as array(*)? {
-    util:log('info', $container?items?1?id),
-    if (
+    util:log('info', ('annotations:batch-update ', 'document ', $container?document)),
+    if (not(exists($container?document)))
+    then (error($errors:E400, '"document" missing in BasicContainer', $container))
+    else if (
         not(exists($container?items)) or 
         not($container?items instance of array(*))
     )
-    then (error($errors:E400, '"Items" missing or of wrong type in BasicContainer', $container))
+    then (error($errors:E400, '"items" missing or of wrong type in BasicContainer', $container))
     else (
         util:log('info', 'annotations:batch-update found ' || array:size($container?items) || ' items'),
-        array:for-each($container?items, annotations:update-container-item#1)
+        array:append(
+            array:for-each($container?items, annotations:update-container-item#1),
+            annotations:delete-elements-by-document($container?document, $container?items)
+        )
     )
 };
 
@@ -260,6 +322,5 @@ declare function annotations:handle-update($request as map(*)) as map(*) {
 };
 
 declare function annotations:handle-list($request as map(*)) as map(*) {
-    (:~ annotations:list('http://kjc-sv010.kjc.uni-heidelberg.de:8080/fcgi-bin/iipsrv.fcgi?IIIF=imageStorage/ecpo_new/jingbao/1919/05/jb_0027_1919-05-21_0001%252B0004.tif/full/!4096,4096/0/default.jpg', $request?parameters?page) ~:)
     annotations:list($request?parameters?document, $request?parameters?page)
 };

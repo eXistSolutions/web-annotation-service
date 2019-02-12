@@ -12,20 +12,7 @@ declare namespace expath="http://expath.org/ns/pkg";
 (: 
     Determine the application root collection from the current module load path.
 :)
-declare variable $config:app-root := 
-    let $rawPath := system:get-module-load-path()
-    let $modulePath :=
-        (: strip the xmldb: part :)
-        if (starts-with($rawPath, "xmldb:exist://")) then
-            if (starts-with($rawPath, "xmldb:exist://embedded-eXist-server")) then
-                substring($rawPath, 36)
-            else
-                substring($rawPath, 15)
-        else
-            $rawPath
-    return
-        substring-before($modulePath, "/modules")
-;
+declare variable $config:app-root := '/db/' || substring-before(substring-after(system:get-module-load-path(),'/db/'),'/modules');
 
 declare variable $config:repo-descriptor := doc(concat($config:app-root, "/repo.xml"))/repo:meta;
 declare variable $config:expath-descriptor := doc(concat($config:app-root, "/expath-pkg.xml"))/expath:package;
@@ -34,15 +21,6 @@ declare variable $config:SETTINGS := doc($config:app-root || "/configuration.xml
 
 declare variable $config:annotation-collection := $config:SETTINGS/annotations/@collection/string();
 declare variable $config:annotation-id-prefix := $config:SETTINGS/annotations/@id-prefix/string();
-
-(:
-declare variable $config:AUTH := doc($config:app-root || "/configuration.xml")/settings/authorization;
-declare variable $config:VIEW-PACKAGE-PERMISSION := data(doc($config:app-root || "/configuration.xml")/settings/authorization/action[@name eq "view-packages"]/@required-level);
-declare variable $config:DEFAULT-APPS-PERMISSION := data(doc($config:app-root || "/configuration.xml")/settings/authorization/action[@name eq "view-default-apps"]/@required-level);
-declare variable $config:VIEW-DETAILS-PERMISSION := data(doc($config:app-root || "/configuration.xml")/settings/authorization/action[@name eq "view-package-details"]/@required-level);
-declare variable $config:INSTALL-PACKAGE-PERMISSION := data(doc($config:app-root || "/configuration.xml")/settings/authorization/action[@name eq "install-package"]/@required-level);
-declare variable $config:REMOVE-PACKAGE-PERMISSION := data(doc($config:app-root || "/configuration.xml")/settings/authorization/action[@name eq "remove-package"]/@required-level);
-:)
 
 (: ### default to first found entry of repository element for now - to be extended for multiple repos ### :)
 declare variable $config:DEFAULT-REPO := xs:anyURI($config:SETTINGS//repository[1]);
