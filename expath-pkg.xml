@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://expath.org/ns/pkg" 
     name="http://exist-db.org/apps/web-annotation-service" 
-    abbrev="wap" version="1.2.1" spec="1.0">
+    abbrev="wap" version="2.1.0" spec="1.0">
     <title>Web Annotation Protocol Server</title>
     <dependency package="http://www.functx.com"/>
 </package>

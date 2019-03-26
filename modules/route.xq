@@ -15,7 +15,8 @@ declare variable $local:routes := [
     'pattern': '/annotations/',
     'methods': ('GET', 'HEAD', 'OPTIONS'),
     'parameters': [
-      map { 'name':'page', 'type': 'xs:integer', 'default': 0 },
+      map { 'name': 'page', 'type': 'xs:integer', 'default': 0 },
+      map { 'name': 'items-per-page', 'type': 'xs:integer', 'default': $annotations:items-per-page },
       'document'
     ],
     'handler': annotations:handle-list#1

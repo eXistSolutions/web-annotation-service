@@ -20,20 +20,20 @@ function annotations:by-source ($document-id as xs:string) as element(annotation
 };
 
 declare
-function annotations:list ($document-id as xs:string?, $page as xs:integer?) as map(*) {
+function annotations:list ($document-id as xs:string?, $page as xs:integer?, $items-per-page as xs:integer?) as map(*) {
     let $annotations := 
         if (exists($document-id))
         then (annotations:by-source($document-id))
         else (collection($config:annotation-collection)/annotation)
     let $annotations-count := count($annotations)
-    let $last-page := max((ceiling($annotations-count div $annotations:items-per-page)-1, 0))
+    let $last-page := max((ceiling($annotations-count div $items-per-page)-1, 0))
 
     return (
         util:log('info', ('document ID:', $document-id, ' Page:',$page,' Last page:', $last-page)),
         if ($page > $last-page or $page < 0)
         then (error($errors:E400, 'requested page is out of bounds'))
         else (
-            let $start-index := $page * $annotations:items-per-page
+            let $start-index := $page * $items-per-page
             let $next-page := if ($page + 1 >= $last-page) then ($last-page) else ($page + 1)
             return map {
                 "@context": "http://www.w3.org/ns/anno.jsonld",
@@ -50,7 +50,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?) as 
                 }),
                 "items": array { 
                     for-each(
-                        subsequence($annotations, $start-index, $annotations:items-per-page),
+                        subsequence($annotations, $start-index, $items-per-page),
                         annotations:entry2json(?)
                     )
                 },
@@ -322,5 +322,5 @@ declare function annotations:handle-update($request as map(*)) as map(*) {
 };
 
 declare function annotations:handle-list($request as map(*)) as map(*) {
-    annotations:list($request?parameters?document, $request?parameters?page)
+    annotations:list($request?parameters?document, $request?parameters?page, $request?parameters?items-per-page)
 };
