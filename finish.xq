@@ -18,7 +18,7 @@ The collection xconf in the app root collection will be moved to the data collec
 and applied automatically.
 This means updated index configurations will also always be applied.
 ~:)
-declare variable $local:DATA_COLLECTION := '/db/apps/annotations';
+declare variable $local:DATA_COLLECTION := '/db/apps/wap-data';
 declare variable $local:SYSTEM_CONFIG_DATA_COLLECTION := '/db/system/config' || $local:DATA_COLLECTION;
 declare variable $local:XCONF := 'collection.xconf';
 declare variable $local:router := $target || '/modules/route.xq';
