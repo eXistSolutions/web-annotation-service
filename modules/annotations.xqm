@@ -16,7 +16,7 @@ function annotations:filter-by-source ($document-id as xs:string, $anno as eleme
 
 declare %private
 function annotations:by-source ($document-id as xs:string) as element(annotation)* {
-    collection($config:annotation-collection)/annotation[$document-id eq ./target/@source/string()]
+    collection($config:annotation-collection)/annotation[$document-id = ./target/@source/string()]
 };
 
 declare
@@ -99,35 +99,55 @@ declare function annotations:by-id ($id as xs:string) as map()? {
         )))
 };
 
+declare function annotations:categoryLabel2json ($category as element(category)) {
+    map {
+        "value": map {
+            "name": $category/@name/string(),
+            "label": $category/@label/string(),
+            "color": $category/@color/string()
+        }
+    }
+};
+
+declare function annotations:groupAnnotation2json ($group as element(group)) {
+    map {
+        "color": $group/@color/string()
+        (:~ "boundingBox": $body/group/@color/string() ~:)
+    }
+};
+
+declare function annotations:body2json ($body as element(body)) {
+    map:merge((
+        map { "type": $body/@type/string() },
+        switch ($body/@type/string())
+            case 'GroupAnnotation' return annotations:groupAnnotation2json($body/group)
+            case 'CategoryLabel' return annotations:categoryLabel2json($body/category)
+            default return map { "value": $body/text() }
+    ))
+};
+
+declare function annotations:target2json ($target as element(target)) {
+    map {
+        "selector": map {
+            "type": $target/selector/@type/string(),
+            "value": serialize($target/selector/*, map{'method': 'adaptive'})
+        },
+        "id": $target/@xml:id/string(),
+        "type": $target/@type/string(),
+        "source": $target/@source/string()
+    }
+};
+
 declare function annotations:entry2json ($entry as element(annotation)) as map() {
     map {
         "id": $entry/@xml:id/string(),
         "type": "Annotation",
         "created": $entry/@created/string(),
         "body": array {
-            for-each($entry/body, function ($body) {
-                map {
-                    "type": $body/@type/string(),
-                    "value": map {
-                        "name": $body/category/@name/string(),
-                        "label": $body/category/@label/string(),
-                        "color": $body/category/@color/string()
-                    }
-                }
-            })
+            for-each($entry/body, annotations:body2json#1)
         },
         "target": array {
-            for-each($entry/target, function ($target) {
-                map {
-                    "selector": map {
-                        "type": $target/selector/@type/string(),
-                        "value": serialize($target/selector/*, map{'method': 'adaptive'})
-                    },
-                    "id": $target/@xml:id/string(),
-                    "type": $target/@type/string(),
-                    "source": $target/@source/string()
-                }
-            })
+            for-each($entry/target, annotations:target2json#1)
         }
     }
 };
@@ -136,6 +156,8 @@ declare %private function annotations:body2xml ($body as map(*)) as element(body
     <body type="{$body?type}">
         {
             switch ($body?type)
+            case 'GroupAnnotation' return
+                <group color="{$body?color}" id="{$body?id}"/>
             case 'CategoryLabel' return
                 <category name="{$body?value?name}" color="{$body?value?color}" label="{$body?value?label}"/>
             case 'TextualBody' return $body?value
@@ -308,7 +330,7 @@ declare function annotations:handle-update($request as map(*)) as map(*) {
 
     return (
         util:log('info', 'annotation:handle-add type:' || $data?type),
-        if ($data?type eq 'Annotation')
+        if ($data?type = 'Annotation')
         then (map {
             "id": $data?id,
             "result": annotations:add($data)
