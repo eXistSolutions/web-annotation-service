@@ -85,7 +85,7 @@ function rp:get-parameter-value-as-map ($parameter-name as xs:string) as map(*) 
 ~:)
 declare
 function rp:get ($parameter-names as xs:string*) as map(*) {
-    map:new(for-each($parameter-names, rp:get-parameter-value-as-map#1))
+    map:merge(for-each($parameter-names, rp:get-parameter-value-as-map#1))
 };
 
 declare
@@ -123,7 +123,7 @@ function rp:get ($parameter-definition as array(*)?) as map(*)? {
     if (not(exists($parameter-definition)))
     then ()
     else (
-        map:new(
+        map:merge(
             array:for-each(
                 $parameter-definition, 
                 rp:get-by-name-or-definition#1)?*)

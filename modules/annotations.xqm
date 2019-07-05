@@ -9,6 +9,11 @@ import module namespace errors="wap/errors" at 'errors.xqm';
 
 declare variable $annotations:items-per-page := 10;
 
+declare variable $annotations:body-type-group := 'GroupAnnotation';
+declare variable $annotations:body-type-text := 'TextualBody';
+declare variable $annotations:body-type-category := 'CategoryLabel';
+declare variable $annotations:target-type-specific := 'SpecificResource';
+
 declare %private
 function annotations:filter-by-source ($document-id as xs:string, $anno as element(annotation)) as xs:boolean {
     $document-id = $anno/target/@source/string()

@@ -41,7 +41,7 @@ sm:chmod($local:router, $local:router-permissions),
 (: store the collection configuration :)
 util:log('info', ('created folder ', collection:create($local:SYSTEM_CONFIG_DATA_COLLECTION)?path)),
 util:log('info', ('copy ', $local:XCONF, ' to ', $local:SYSTEM_CONFIG_DATA_COLLECTION)),
-xmldb:copy($target, $local:SYSTEM_CONFIG_DATA_COLLECTION, $local:XCONF),
+xmldb:copy-resource($target, $local:XCONF, $local:SYSTEM_CONFIG_DATA_COLLECTION, $local:XCONF),
 util:log('info', ('move ', $local:XCONF, ' to ', $local:DATA_COLLECTION)),
 xmldb:move($target, $local:DATA_COLLECTION, $local:XCONF),
 util:log('info', ('installation finished'))
