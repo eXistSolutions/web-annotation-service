@@ -5,9 +5,8 @@
         <range>
             <create qname="@created" type="xs:string"/>
             <create qname="@type" type="xs:string"/>
-            <create qname="@source" type="xs:integer"/>
-            <create qname="@name" type="xs:integer"/>
+            <create qname="@source" type="xs:string"/>
+            <create qname="@name" type="xs:string"/>
         </range>
     </index>
-    <triggers/>
 </collection>
