@@ -13,6 +13,7 @@ declare variable $annotations:body-type-group := 'GroupAnnotation';
 declare variable $annotations:body-type-text := 'TextualBody';
 declare variable $annotations:body-type-category := 'CategoryLabel';
 declare variable $annotations:target-type-specific := 'SpecificResource';
+declare variable $annotations:collection := collection($config:annotation-collection);
 
 declare %private
 function annotations:filter-by-source ($document-id as xs:string, $anno as element(annotation)) as xs:boolean {
@@ -20,8 +21,8 @@ function annotations:filter-by-source ($document-id as xs:string, $anno as eleme
 };
 
 declare %private
-function annotations:by-source ($document-id as xs:string) as element(annotation)* {
-    collection($config:annotation-collection)/annotation[$document-id = ./target/@source/string()]
+function annotations:by-source ($document-id as xs:string) {
+    $annotations:collection//annotation/target/@source[.=$document-id]/../..
 };
 
 declare
@@ -80,7 +81,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?, $it
 ~:)
 declare function annotations:exists ($id as xs:string?) as xs:boolean {
     util:log('info', 'annotations:exists ' || $id),
-    exists(collection($config:annotation-collection)/id($id))
+    exists($annotations:collection/id($id))
 };
 
 (:~
@@ -265,7 +266,7 @@ declare function annotations:delete ($id as xs:string) {
     else (
         xmldb:remove(
             $config:annotation-collection,
-            util:document-name(collection($config:annotation-collection)/id($id))
+            util:document-name($annotations:collection/id($id))
         )
     )
 };
@@ -275,7 +276,8 @@ declare function annotations:delete ($id as xs:string) {
 ~:)
 declare function annotations:delete-elements-by-document($container-document as xs:string, $container-items as array(*)) {
     let $submitted-annotation-ids := array:for-each($container-items, function ($item) {$item?id})
-    let $annotation-ids-to-delete := annotations:by-source($container-document)[not(./@xml:id/string() = $submitted-annotation-ids?*)]/@xml:id/string()
+    let $idsAsSequence := $submitted-annotation-ids?*
+    let $annotation-ids-to-delete := $annotations:collection//annotation/target/@source[.=$container-document]/../..[not(./@xml:id = $idsAsSequence)]/@xml:id/string()
 
     return (
         util:log('info', 'sub: ' || serialize($submitted-annotation-ids, map {'method': 'adaptive'})),
