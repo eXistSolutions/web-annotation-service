@@ -5,6 +5,11 @@ import module namespace router="wap/router" at 'router.xqm';
 import module namespace rq="wap/request" at 'request.xqm';
 import module namespace annotations="wap/annotations" at 'annotations.xqm';
 
+declare namespace output = "http://www.w3.org/2010/xslt-xquery-serialization";
+declare option output:method "json";
+declare option output:media-type "application/json";
+declare option output:indent "no";
+
 declare variable $local:routes := [
   map {
     'pattern': '/annotations/:id',

@@ -46,42 +46,29 @@ declare function router:route($request, $routes as array(*)) {
         if ($number-of-matching-routes < 1)
         then (
             response:set-status-code(404),
-            serialize(
-                map { 'error': 404, 'request': $request },
-                map { "method": "json" }
-            )
+            map { 'error': 404, 'request': $request }
         )
         else (
             try {
-                (: TODO: fix '&gt;', '>' and '&lt;', '<' :)
                 let $parameters := rp:get($matching?1?parameters)
                 let $request-with-parameters := rq:add-parameters($request, $parameters)
                 let $response := $matching?1?handler($request-with-parameters)
                 return (
                     util:log('info', 'RESPONSE ' || serialize($response, map { "method": "adaptive" })),
-                    serialize($response, map { "method": "json" })
+                    $response
                 )
             }
             catch errors:E400 {
                 response:set-status-code(400),
-                serialize(
-                    map { 'error': 400, 'description': $err:description },
-                    map { "method": "json" }
-                )
+                map { 'error': 400, 'description': $err:description }
             }
             catch errors:E404 {
                 response:set-status-code(404),
-                serialize(
-                    map { 'error': 404, 'description': $err:description },
-                    map { "method": "json" }
-                )
+                map { 'error': 404, 'description': $err:description }
             }
             catch * {
                 response:set-status-code(500),
-                serialize(
-                    map { 'error': 500, 'description': $err:description, 'sent': $request?body },
-                    map { "method": "json" }
-                )
+                map { 'error': 500, 'description': $err:description, 'sent': $request?body }
             }
         )
     )

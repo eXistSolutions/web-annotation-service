@@ -136,7 +136,7 @@ declare function annotations:target2json ($target as element(target)) {
     map {
         "selector": map {
             "type": $target/selector/@type/string(),
-            "value": serialize($target/selector/*, map{'method': 'adaptive'})
+            "value": $target/selector/*
         },
         "id": $target/@xml:id/string(),
         "type": $target/@type/string(),
