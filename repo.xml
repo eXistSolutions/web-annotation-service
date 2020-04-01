@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <meta xmlns="http://exist-db.org/xquery/repo">
-    <description>Web Annotation Protocol Implementation for ExistDB</description>
+    <description>Web Annotation (Protocol) Service for ExistDB</description>
     <author>Juri Leino</author>
     <website/>
     <status>beta</status>
