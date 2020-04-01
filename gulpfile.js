@@ -20,14 +20,10 @@ gulp.task('clean', function () {
 // files in project root //
 
 var otherPaths = [
-    '*.html',
     '*.xql',
-    'templates/**/*',
-    'transforms/**/*',
-    'resources/**/*',
-    '!resources/css/*',
+    'icon.png',
+    'configuration.xml',
     'modules/**/*',
-    'components/demo/**'
 ];
 
 gulp.task('deploy:other', function () {
