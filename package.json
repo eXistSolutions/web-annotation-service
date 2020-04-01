@@ -7,9 +7,9 @@
     "doc": "doc"
   },
   "dependencies": {
-    "@existdb/gulp-exist": "^3.0.0",
+    "@existdb/gulp-exist": "^3.0.3",
     "del": "^3.0.0",
-    "gulp": "^3.9.1"
+    "gulp": "^4.0.2"
   },
   "devDependencies": {},
   "scripts": {

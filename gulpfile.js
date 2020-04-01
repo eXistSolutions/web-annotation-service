@@ -32,10 +32,10 @@ gulp.task('deploy:other', function () {
         .pipe(exClient.dest(targetConfiguration))
 })
 
-gulp.task('deploy', ['deploy:other'])
+gulp.task('deploy', gulp.series('deploy:other'))
 
-gulp.task('watch', ['deploy'], function () {
-    gulp.watch(otherPaths, ['deploy:other'])
-})
+gulp.task('watch', gulp.series('deploy', function () {
+    gulp.watch(otherPaths, gulp.series('deploy:other'))
+}))
 
-gulp.task('default', ['watch'])
+gulp.task('default', gulp.series('watch'))
