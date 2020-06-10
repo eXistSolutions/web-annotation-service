@@ -21,7 +21,7 @@ function annotations:filter-by-source ($document-id as xs:string, $anno as eleme
 };
 
 declare %private
-function annotations:by-source ($document-id as xs:string) {
+function annotations:by-source ($document-id as xs:string) as element()* {
     $annotations:collection//annotation/target/@source[.=$document-id]/../..
 };
 
@@ -35,9 +35,8 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?, $it
     let $last-page := max((ceiling($annotations-count div $items-per-page)-1, 0))
 
     return (
-        util:log('info', ('document ID:', $document-id, ' Page:',$page,' Last page:', $last-page)),
         if ($page > $last-page or $page < 0)
-        then (error($errors:E400, 'requested page is out of bounds'))
+        then (error($errors:E400, 'requested page is out of bounds', $page))
         else (
             let $start-index := $page * $items-per-page
             let $next-page := if ($page + 1 >= $last-page) then ($last-page) else ($page + 1)
@@ -79,7 +78,8 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?, $it
     @params $id xs:string The annotation ID to check
     @returns xs:boolean
 ~:)
-declare function annotations:exists ($id as xs:string?) as xs:boolean {
+declare
+function annotations:exists ($id as xs:string?) as xs:boolean {
     util:log('info', 'annotations:exists ' || $id),
     exists($annotations:collection/id($id))
 };
@@ -93,19 +93,21 @@ declare function annotations:exists ($id as xs:string?) as xs:boolean {
     @throws wap:E404 if no annotation was found
     @returns xs:boolean
 ~:)
-declare function annotations:by-id ($id as xs:string) as map()? {
-    let $annotation := collection($config:annotation-collection)/id($id)
+declare
+function annotations:by-id ($id as xs:string) as map()? {
+    let $annotation := collection($config:annotation-collection)//annotation/@xml:id[.=$id]/..
 
     return
         if (not($annotation)) 
-        then (error($errors:E404, 'No Annotation Found', $id))
+        then (error($errors:E404, 'No Annotation with id  "' || $id || '" found'))
         else (map:merge((
             map { "@context": "http://www.w3.org/ns/anno.jsonld" },
             annotations:entry2json($annotation)
         )))
 };
 
-declare function annotations:categoryLabel2json ($category as element(category)) {
+declare
+function annotations:categoryLabel2json ($category as element(category)) {
     map {
         "value": map {
             "name": $category/@name/string(),
@@ -115,14 +117,16 @@ declare function annotations:categoryLabel2json ($category as element(category))
     }
 };
 
-declare function annotations:groupAnnotation2json ($group as element(group)) {
+declare
+function annotations:groupAnnotation2json ($group as element(group)) {
     map {
         "color": $group/@color/string()
         (:~ "boundingBox": $body/group/@color/string() ~:)
     }
 };
 
-declare function annotations:body2json ($body as element(body)) {
+declare
+function annotations:body2json ($body as element(body)) {
     map:merge((
         map { "type": $body/@type/string() },
         switch ($body/@type/string())
@@ -132,7 +136,8 @@ declare function annotations:body2json ($body as element(body)) {
     ))
 };
 
-declare function annotations:target2json ($target as element(target)) {
+declare
+function annotations:target2json ($target as element(target)) {
     map {
         "selector": map {
             "type": $target/selector/@type/string(),
@@ -144,7 +149,8 @@ declare function annotations:target2json ($target as element(target)) {
     }
 };
 
-declare function annotations:entry2json ($entry as element(annotation)) as map() {
+declare
+function annotations:entry2json ($entry as element(annotation)) as map() {
     map {
         "id": $entry/@xml:id/string(),
         "type": "Annotation",
@@ -158,7 +164,8 @@ declare function annotations:entry2json ($entry as element(annotation)) as map()
     }
 };
 
-declare %private function annotations:body2xml ($body as map(*)) as element(body) {
+declare %private
+function annotations:body2xml ($body as map(*)) as element(body) {
     <body type="{$body?type}">
         {
             switch ($body?type)
@@ -175,7 +182,8 @@ declare %private function annotations:body2xml ($body as map(*)) as element(body
     </body>
 };
 
-declare %private function annotations:json2entry ($data as map(*)) as element(annotation) {
+declare %private
+function annotations:json2entry ($data as map(*)) as element(annotation) {
     <annotation xml:id="{$data?id}" created="{$data?created}">
         {
             array:for-each($data?body, annotations:body2xml#1),
@@ -198,7 +206,8 @@ declare %private function annotations:json2entry ($data as map(*)) as element(an
     @throws wap:E400 if the annotation exists
     @returns xs:string annotation IRI
 ~:)
-declare function annotations:add ($data as map(*)) as xs:string {
+declare
+function annotations:add ($data as map(*)) as xs:string {
     if (not(exists($data?id)))
     then (error($errors:E400, 'ID is missing', $data))
     else if (annotations:exists($data?id))
@@ -211,35 +220,43 @@ declare function annotations:add ($data as map(*)) as xs:string {
     )
 };
 
-declare function annotations:update ($data as map(*)) as xs:string {
+declare
+function annotations:update ($data as map(*)) as xs:string {
     let $annotation := annotations:json2entry($data)
     let $file := $data?id || '.xml'
     let $stored := xmldb:store($config:annotation-collection, $file, $annotation)
     return $data?id
 };
 
-declare function annotations:update-container-item ($item as map(*)) as map(*) {
+declare
+function annotations:update-container-item ($item as map(*)) as map(*) {
     util:log('info', 'annotations:update-container-item ' || serialize($item, map { 'method': 'adaptive' })),
     try {
-        let $id := 
-            if (starts-with($item?id, $config:annotation-id-prefix))
-            then ($item?id)
-            else (concat($config:annotation-id-prefix, $item?id))
-        
-        let $item-with-prefixed-id := map:merge(($item, map { 'id': $id }))
-        let $migrate :=
-            if (annotations:exists($item?id) and not(annotations:exists($id)))
-            then (annotations:delete($item?id))
-            else ()
-        let $result :=
-            if (annotations:exists($item?id))
-            then (annotations:update($item))
-            else (annotations:add($item))
+        if (annotations:is-group-annotation($item) and not(annotations:has-targets($item)))
+        then (error($errors:E400, 'Empty Group Annotation', $item))
+        else (
+            let $id :=
+                if (starts-with($item?id, $config:annotation-id-prefix))
+                then ($item?id)
+                else (concat($config:annotation-id-prefix, $item?id))
 
-        return map {
-            "id": $item?id,
-            "result": $result
-        }
+            let $item-with-prefixed-id := map:merge(($item, map { 'id': $id }))
+
+            let $migrate :=
+                if (annotations:exists($item?id) and not(annotations:exists($id)))
+                then (annotations:delete($item?id))
+                else ()
+
+            let $result :=
+                if (annotations:exists($item?id))
+                then (annotations:update($item))
+                else (annotations:add($item))
+
+            return map {
+                "id": $item?id,
+                "result": $result
+            }
+        )
     }
     catch * {
         map {
@@ -249,7 +266,8 @@ declare function annotations:update-container-item ($item as map(*)) as map(*) {
     }
 };
 
-declare function annotations:file-by-id ($id as xs:string?) {
+declare
+function annotations:file-by-id ($id as xs:string?) {
     let $annotation := collection($config:annotation-collection)/id($id)
 
     return
@@ -259,8 +277,9 @@ declare function annotations:file-by-id ($id as xs:string?) {
 };
 
 (:~ 
- ~:)
-declare function annotations:delete ($id as xs:string) {
+~:)
+declare
+function annotations:delete ($id as xs:string) {
     if (not(annotations:exists($id)))
     then (true())
     else (
@@ -271,17 +290,47 @@ declare function annotations:delete ($id as xs:string) {
     )
 };
 
+declare %private
+function annotations:group-by-type ($container-items as array(*)) as map(*) {
+    let $grouped-item-ids :=
+        for $container-item in $container-items?*
+        let $is-group := annotations:is-group-annotation($container-item)
+        let $key := if ($is-group) then "groups" else "annotations"
+        group by $is-group
+        return
+            map { $key[1] : for-each($container-item, annotations:item-id#1) }
+
+    return map:merge($grouped-item-ids)
+};
+
+declare %private
+function annotations:item-id ($item as map(*)) { $item?id };
+
 (:~
     
 ~:)
-declare function annotations:delete-elements-by-document($container-document as xs:string, $container-items as array(*)) {
-    let $submitted-annotation-ids := array:for-each($container-items, function ($item) {$item?id})
-    let $idsAsSequence := $submitted-annotation-ids?*
-    let $annotation-ids-to-delete := $annotations:collection//annotation/target/@source[.=$container-document]/../..[not(./@xml:id = $idsAsSequence)]/@xml:id/string()
+declare
+function annotations:delete-elements-by-document($container-document as xs:string, $container-items as array(*)) {
+    let $grouped-annotation-ids := annotations:group-by-type($container-items)
+
+    let $annotations-targeting-document := annotations:by-source($container-document)
+
+    let $group-annotation-ids-to-delete :=
+        $annotations-targeting-document[exists(.//group)]
+            /@xml:id[not(.=$grouped-annotation-ids?groups)]/string()
+
+    let $annotation-ids-to-delete :=
+        $annotations-targeting-document[not(exists(.//group))]
+            /@xml:id[not(.=$grouped-annotation-ids?annotations)]/string()
+
+    let $all-annotation-ids-to-delete := (
+        $group-annotation-ids-to-delete,
+        $annotation-ids-to-delete
+    )
 
     return (
-        util:log('info', 'sub: ' || serialize($submitted-annotation-ids, map {'method': 'adaptive'})),
-        util:log('info', 'del: ' || serialize($annotation-ids-to-delete, map {'method': 'adaptive'})),
+        util:log('info', ('submitted: ', $grouped-annotation-ids)),
+        util:log('info', ('delete: ', $all-annotation-ids-to-delete)),
         for-each($annotation-ids-to-delete, function ($id) {
             if (annotations:delete($id))
             then (``[deleted `{$id}`]``)
@@ -290,6 +339,26 @@ declare function annotations:delete-elements-by-document($container-document as 
     )
 };
 
+declare
+function annotations:has-targets ($item as map(*)) as xs:boolean {
+    map:contains($item, "target") and
+    $item?target instance of array(*) and
+    array:size($item?target) > 0
+};
+
+declare %private
+function annotations:has-group-body ($item as map(*)) as xs:boolean {
+    array:fold-left($item?body, false(),
+        function ($result as xs:boolean, $body as map(*)) as xs:boolean {
+            if ($body?type = "GroupAnnotation") then (true()) else ($result) })
+};
+
+declare
+function annotations:is-group-annotation ($item as map(*)) {
+    map:contains($item, "body") and
+    $item?body instance of array(*) and
+    annotations:has-group-body($item)
+};
 
 (:~
     update and create multiple annotations in a BasicContainer
@@ -298,7 +367,8 @@ declare function annotations:delete-elements-by-document($container-document as 
     @throws wap:E400 if no 'items' key is found or it is not an array
     @returns array() An array of strings, where each entry represents the result of a single operation
 ~:)
-declare function annotations:batch-update ($container as map(*)) as array(*)? {
+declare
+function annotations:batch-update ($container as map(*)) as array(*)? {
     util:log('info', ('annotations:batch-update ', 'document ', $container?document)),
     if (not(exists($container?document)))
     then (error($errors:E400, '"document" missing in BasicContainer', $container))
@@ -308,7 +378,7 @@ declare function annotations:batch-update ($container as map(*)) as array(*)? {
     )
     then (error($errors:E400, '"items" missing or of wrong type in BasicContainer', $container))
     else (
-        util:log('info', 'annotations:batch-update found ' || array:size($container?items) || ' items'),
+        util:log('info', 'annotations:batch-update - found ' || array:size($container?items) || ' items'),
         array:append(
             array:for-each($container?items, annotations:update-container-item#1),
             annotations:delete-elements-by-document($container?document, $container?items)
@@ -323,7 +393,8 @@ declare function annotations:batch-update ($container as map(*)) as array(*)? {
     @throws wap:E400 if no annotation ID is part of the request URL
     @returns map() the annotation data
 ~:)
-declare function annotations:handle-single($request as map(*)) as map(*) {
+declare
+function annotations:handle-single($request as map(*)) as map(*) {
     let $id := $request?parts[3]
 
     return
@@ -332,7 +403,8 @@ declare function annotations:handle-single($request as map(*)) as map(*) {
         else (annotations:by-id($id))
 };
 
-declare function annotations:handle-update($request as map(*)) as map(*) {
+declare
+function annotations:handle-update($request as map(*)) as map(*) {
     let $data := parse-json($request?body)
 
     return (
@@ -350,6 +422,16 @@ declare function annotations:handle-update($request as map(*)) as map(*) {
     )
 };
 
-declare function annotations:handle-list($request as map(*)) as map(*) {
-    annotations:list($request?parameters?document, $request?parameters?page, $request?parameters?items-per-page)
+declare
+function annotations:handle-list($request as map(*)) as map(*) {
+    let $document-id := $request?parameters?document
+    let $page := $request?parameters?page
+    let $items-per-page := $request?parameters?items-per-page
+
+    let $response := annotations:list($document-id, $page, $items-per-page)
+
+    return (
+        $response,
+        util:log('info', ('REQUEST ', $request?id, ' document ID:', $document-id, ' Page:', $page, ' items:', $items-per-page))
+    )
 };
