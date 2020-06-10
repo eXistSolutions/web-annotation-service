@@ -1,6 +1,6 @@
 {
   "name": "web-annotation-service",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "description": "aims to be an implementation of [Web Annotation Protocol](http://w3c.github.io/web-annotation/protocol/wd/) running as a service app on eXist-db.",
   "main": "gulpfile.js",
   "directories": {
