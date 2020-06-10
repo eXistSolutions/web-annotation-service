@@ -4,9 +4,9 @@
         TODO: caldulate id-prefix from server configuration (forwarded-host and $exist:* vars )
 
     -->
-    <annotations collection="/db/apps/wap-data" id-prefix="http://localhost:8080/exist/apps/wap/annotations/"/>
+    <annotations collection="/db/apps/wap-data" id-prefix="http://localhost:8080/exist/apps/ecpo/api/annotations/"/>
     <!--
     CURRENT DEMO SERVER CONFIGURATION
-    <annotations collection="/db/apps/wap-data" id-prefix="https://apps.existsolutions.com:8531/exist/apps/wap/annotations/"/>
+    <annotations collection="/db/apps/wap-data" id-prefix="https://ecpo.existsolutions.com/exist/apps/ecpo/api/annotations/"/>
     -->
 </settings>

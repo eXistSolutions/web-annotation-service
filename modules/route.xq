@@ -44,4 +44,4 @@ declare variable $local:routes := [
   }
 ];
 
-router:route(rq:map('/exist/apps/wap'), $local:routes)
+router:route(rq:map(('/exist/apps/wap', '/exist/apps/ecpo/api')), $local:routes)
