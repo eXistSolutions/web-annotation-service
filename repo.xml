@@ -7,8 +7,8 @@
     <license>GNU-LGPL</license>
     <copyright>true</copyright>
     <type>application</type>
-    <target>wap</target>
+    <target>web-annotation-service</target>
     <prepare/>
     <finish>finish.xq</finish>
-    <permissions user="wap" group="wap" mode="rwxrwxr-x"/>
+    <permissions user="annotator" group="annotators" mode="rwxrwxr-x"/>
 </meta>

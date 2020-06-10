@@ -31,8 +31,8 @@ util:log('info', collection:create($local:DATA_COLLECTION)?path),
 (: set permissions for the collections :)
 
 sm:chmod($local:DATA_COLLECTION, 'rwxrwxr-x'),
-sm:chown($local:DATA_COLLECTION, 'wap'),
-sm:chgrp($local:DATA_COLLECTION, 'wap'),
+sm:chown($local:DATA_COLLECTION, 'annotator'),
+sm:chgrp($local:DATA_COLLECTION, 'annotators'),
 
 (:~ set group ID for routes ~:)
 util:log('info', ('set permissions to ', $local:router-permissions ,' for ', $local:router)),
