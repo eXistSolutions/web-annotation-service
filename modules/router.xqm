@@ -2,17 +2,17 @@ xquery version "3.1";
 
 module namespace router="wap/router";
 import module namespace errors="wap/errors" at 'errors.xqm';
-import module namespace rq="wap/request" at 'request.xqm';
 import module namespace rp="wap/request-parameters" at 'request-parameters.xqm';
 
 declare function router:request-matches-method($request, $route) { 
-    util:log('info', 'router:request-matches-method: ' || string-join($route?methods, ',')),
+    util:log('debug', 'router:request-matches-method: ' || string-join($route?methods, ',')),
     $request?method = $route?methods
 };
 
+(:~ 
+    TODO better support for path parameters => /annotations/:id
+ :)
 declare function router:request-matches-pattern($request, $route) {
-    (:~ TODO better support for path parameters => /annotations/:id ~:)
-
     let $p-parts := tokenize($route?pattern, '/')
     
     return (
@@ -32,44 +32,45 @@ declare function router:request-matches-pattern($request, $route) {
 };
 
 declare function router:route($request, $routes as array(*)) {
-    let $matching :=
-        $routes 
-            => array:filter(router:request-matches-method($request, ?))
-            => array:filter(router:request-matches-pattern($request, ?))
+    util:log('info', 'REQUEST ' || $request?id),
+    util:log('debug', 'REQUEST ' || serialize($request, map {'method': 'adaptive'})),
+    response:set-header('content-type', 'application/json'),
+    try {
+        let $matching :=
+            $routes 
+                => array:filter(router:request-matches-method($request, ?))
+                => array:filter(router:request-matches-pattern($request, ?))
 
-    let $number-of-matching-routes := array:size($matching)
+        let $number-of-matching-routes := array:size($matching)
 
-    return (
-        util:log('info', 'REQUEST ' || serialize($request, map {'method': 'adaptive'})),
-        util:log('info', 'Number of matching routes: ' || $number-of-matching-routes),
-        response:set-header('content-type', 'application/json'),
-        if ($number-of-matching-routes < 1)
-        then (
-            response:set-status-code(404),
-            map { 'error': 404, 'request': $request }
-        )
-        else (
-            try {
-                let $parameters := rp:get($matching?1?parameters)
-                let $request-with-parameters := rq:add-parameters($request, $parameters)
-                let $response := $matching?1?handler($request-with-parameters)
+        return 
+            if ($number-of-matching-routes < 1)
+            then (error($errors:E404, 'Not found', $request))
+            else (
+                let $response := 
+                    rp:add-parameters($request, $matching?1?parameters)
+                    => ($matching?1?handler)()
+                
                 return (
-                    util:log('info', 'RESPONSE ' || serialize($response, map { "method": "adaptive" })),
-                    $response
+                    $response,
+                    util:log('info', 'RESPONSE ' || $request?id),
+                    util:log('debug', $response)
                 )
-            }
-            catch errors:E400 {
-                response:set-status-code(400),
-                map { 'error': 400, 'description': $err:description }
-            }
-            catch errors:E404 {
-                response:set-status-code(404),
-                map { 'error': 404, 'description': $err:description }
-            }
-            catch * {
-                response:set-status-code(500),
-                map { 'error': 500, 'description': $err:description, 'sent': $request?body }
-            }
-        )
-    )
+            )
+    }
+    catch errors:E400 {
+        response:set-status-code(400),
+        map { 'error': 400, 'description': $err:description },
+        util:log('error', 'ERROR 400 ' || $request?id || ' description: ' || $err:description)
+    }
+    catch errors:E404 {
+        response:set-status-code(404),
+        map { 'error': 404, 'description': $err:description, 'sent': $request },
+        util:log('error', 'ERROR 404 ' || $request?id || ' description: ' || $err:description)
+    }
+    catch * {
+        response:set-status-code(500),
+        map { 'error': 500, 'description': 'The request could not be processed because of a server-side error', 'sent': $request },
+        util:log('error', 'ERROR 500 ' || $request?id || ' description: ' || $err:description || " value: " || $err:value)
+    }
 };

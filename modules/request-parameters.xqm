@@ -46,9 +46,19 @@ RESULT:
 ~:)
 declare
 function rp:serialize ($parameters as map(*)) as xs:string {
-    let $parameter-names := map:keys($parameters) (: TODO sort :)
-    let $serialized-parameters := for-each($parameter-names, rp:serialize-parameter($parameters, ?))
-    return '?' || string-join($serialized-parameters, '&amp;')
+    let $parameter-names := map:keys($parameters)
+
+    return
+        if (empty($parameter-names))
+        then ("")
+        else (
+            let $serialized := 
+                sort($parameter-names)
+                => for-each(rp:serialize-parameter($parameters, ?))
+                => string-join('&amp;')
+
+            return '?' || $serialized 
+        )
 };
 
 
@@ -133,4 +143,11 @@ function rp:get ($parameter-definition as array(*)?) as map(*)? {
 declare
 function rp:get-cachebusting-parameter () {
     map:entry('c', substring-before(util:uuid(), '-'))
+};
+
+declare function rp:add-parameters ($request as map(*), $parameter-definition as array(*)?) as map(*) {
+    map:merge(( 
+        $request, 
+        map { 'parameters': rp:get($parameter-definition) }
+    ))
 };
