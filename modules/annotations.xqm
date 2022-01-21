@@ -255,7 +255,7 @@ function annotations:update-container-item ($item as map(*)) as map(*) {
     try {
         if (annotations:is-group-annotation($item) and not(annotations:has-targets($item)))
         then (
-            if (annotations:exists($item?id)
+            if (annotations:exists($item?id))
             then (
                 map {
                     "id": $item?id,
