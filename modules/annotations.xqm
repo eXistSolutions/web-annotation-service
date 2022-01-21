@@ -55,7 +55,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?, $it
                 }),
                 "items": array { 
                     for-each(
-                        subsequence($annotations, $start-index, $items-per-page),
+                        subsequence($annotations, $start-index + 1, $items-per-page),
                         annotations:entry2json(?)
                     )
                 },
