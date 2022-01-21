@@ -55,7 +55,7 @@ function annotations:list ($document-id as xs:string?, $page as xs:integer?, $it
                 }),
                 "items": array { 
                     for-each(
-                        subsequence($annotations, $start-index, $items-per-page),
+                        subsequence($annotations, $start-index + 1, $items-per-page),
                         annotations:entry2json(?)
                     )
                 },
@@ -120,8 +120,12 @@ function annotations:categoryLabel2json ($category as element(category)) {
 declare
 function annotations:groupAnnotation2json ($group as element(group)) {
     map {
-        "color": $group/@color/string()
-        (:~ "boundingBox": $body/group/@color/string() ~:)
+        "id": $group/@id/string(),
+        "color": $group/@color/string(),
+        "top": xs:decimal($group/@top/string()),
+        "left": xs:decimal($group/@left/string()),
+        "width": xs:decimal($group/@width/string()),
+        "height": xs:decimal($group/@height/string())
     }
 };
 
@@ -169,10 +173,8 @@ function annotations:body2xml ($body as map(*)) as element(body) {
     <body type="{$body?type}">
         {
             switch ($body?type)
-            case 'GroupAnnotation' return
-                <group color="{$body?color}" id="{$body?id}"/>
-            case 'CategoryLabel' return
-                <category name="{$body?value?name}" color="{$body?value?color}" label="{$body?value?label}"/>
+            case 'GroupAnnotation' return annotations:groupAnnotationBody2xml($body)
+            case 'CategoryLabel' return annotations:categoryLabel2xml($body)
             case 'TextualBody' return $body?value
             default return ''
             (:
@@ -180,6 +182,25 @@ function annotations:body2xml ($body as map(*)) as element(body) {
             :)
         }
     </body>
+};
+
+declare %private
+function annotations:categoryLabel2xml ($body as map(*)) as element(body) {
+    <category
+        name="{ $body?value?name }"
+        color="{ $body?value?color }"
+        label="{ $body?value?label }"/>
+};
+
+declare %private
+function annotations:groupAnnotationBody2xml ($body as map(*)) as element(body) {
+    <group
+        id="{ $body?id }"
+        color="{ $body?color }"
+        top="{ $body?top }"
+        left="{ $body?left }"
+        width="{ $body?width }"
+        height="{ $body?height }" />
 };
 
 declare %private
@@ -233,7 +254,16 @@ function annotations:update-container-item ($item as map(*)) as map(*) {
     util:log('info', 'annotations:update-container-item ' || serialize($item, map { 'method': 'adaptive' })),
     try {
         if (annotations:is-group-annotation($item) and not(annotations:has-targets($item)))
-        then (error($errors:E400, 'Empty Group Annotation', $item))
+        then (
+            if (annotations:exists($item?id)
+            then (
+                map {
+                    "id": $item?id,
+                    "result": annotations:delete($item?id)
+                }
+            )
+            else (error($errors:E400, 'Skipping non-existent, empty group annotation', $item))
+        )
         else (
             let $id :=
                 if (starts-with($item?id, $config:annotation-id-prefix))
